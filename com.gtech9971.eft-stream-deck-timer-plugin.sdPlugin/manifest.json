@@ -1,0 +1,63 @@
+{
+	"Name": "EFT Raid Timer",
+	"Version": "1.0.0.0",
+	"Author": "gtech9971",
+	"Actions": [
+		{
+			"Name": "Raid Timer",
+			"UUID": "com.gtech9971.eft-stream-deck-timer-plugin.raid-timer",
+			"Icon": "imgs/actions/timer/icon",
+			"Tooltip": "Displays remaining raid time for Escape from Tarkov",
+			"PropertyInspectorPath": "ui/timer-property-inspector.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/timer/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "Map Selector",
+			"UUID": "com.gtech9971.eft-stream-deck-timer-plugin.map-selector",
+			"Icon": "imgs/actions/selector/icon",
+			"Tooltip": "Select current map and start raid timer",
+			"PropertyInspectorPath": "ui/selector-property-inspector.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/selector/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"Category": "Gaming",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Escape from Tarkov raid timer plugin for Stream Deck. Track remaining raid time for all maps.",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 2,
+	"Software": {
+		"MinimumVersion": "6.5"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"UUID": "com.gtech9971.eft-stream-deck-timer-plugin"
+}

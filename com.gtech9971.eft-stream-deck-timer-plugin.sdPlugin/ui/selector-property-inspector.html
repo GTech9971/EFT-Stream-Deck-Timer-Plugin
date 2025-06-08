@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EFT Map Selector Settings</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #2d2d30;
+            color: #cccccc;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #555555;
+            border-radius: 4px;
+            background-color: #3c3c3c;
+            color: #ffffff;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #0078d4;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #106ebe;
+        }
+
+        button:active {
+            background-color: #005a9e;
+        }
+
+        select:focus, input:focus, button:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+
+        .map-info {
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border-left: 3px solid #0078d4;
+        }
+
+        .map-info h4 {
+            margin: 0 0 5px 0;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .map-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .warning {
+            background-color: #2d1b1b;
+            border-left: 3px solid #ff6b6b;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .warning p {
+            margin: 0;
+            font-size: 12px;
+            color: #ffcccc;
+        }
+
+        .current-selection {
+            background-color: #1a2332;
+            border-left: 3px solid #4a90e2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="current-selection">
+            <h4 style="margin: 0 0 5px 0; color: #ffffff;">Current Selection</h4>
+            <p id="currentMap" style="margin: 0; font-size: 12px; color: #4a90e2;">Factory (20 min)</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Map Selection</div>
+            
+            <div class="input-group">
+                <label for="mapSelect">Select Map:</label>
+                <select id="mapSelect">
+                    <option value="factory">Factory (20 min)</option>
+                    <option value="customs">Customs (45 min)</option>
+                    <option value="woods">Woods (45 min)</option>
+                    <option value="shoreline">Shoreline (45 min)</option>
+                    <option value="interchange">Interchange (45 min)</option>
+                    <option value="reserve">Reserve (45 min)</option>
+                    <option value="lighthouse">Lighthouse (45 min)</option>
+                    <option value="labs">The Lab (35 min)</option>
+                    <option value="streets">Streets of Tarkov (45 min)</option>
+                    <option value="ground-zero">Ground Zero (35 min)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <button id="startRaidBtn">Start Raid Timer</button>
+            </div>
+
+            <div class="input-group">
+                <label for="customDuration">Custom Duration (minutes):</label>
+                <input type="number" id="customDuration" min="1" max="180" placeholder="Leave empty for default">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Timer Settings</div>
+            
+            <div class="input-group">
+                <label for="warningTime">Warning Time (minutes before end):</label>
+                <select id="warningTime">
+                    <option value="5">5 minutes</option>
+                    <option value="10">10 minutes</option>
+                    <option value="15">15 minutes</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="autoReset">Auto Reset After Raid:</label>
+                <select id="autoReset">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="map-info">
+            <h4>How to Use</h4>
+            <p>1. Select your map using the dropdown or click the button to cycle</p>
+            <p>2. Click "Start Raid Timer" when entering the raid</p>
+            <p>3. The Raid Timer button will show remaining time</p>
+            <p>4. Timer changes color as time runs out</p>
+        </div>
+
+        <div class="warning">
+            <p><strong>Note:</strong> Make sure to start the timer when your raid actually begins for accurate timing.</p>
+        </div>
+    </div>
+
+    <script>
+        // Stream Deck Property Inspector API
+        let websocket = null;
+        let uuid = null;
+        let actionInfo = {};
+
+        const mapDurations = {
+            "factory": 20,
+            "customs": 45,
+            "woods": 45,
+            "shoreline": 45,
+            "interchange": 45,
+            "reserve": 45,
+            "lighthouse": 45,
+            "labs": 35,
+            "streets": 45,
+            "ground-zero": 35
+        };
+
+        function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
+            uuid = inUUID;
+            actionInfo = JSON.parse(inActionInfo);
+            
+            websocket = new WebSocket('ws://localhost:' + inPort);
+            
+            websocket.onopen = function () {
+                const json = {
+                    event: inRegisterEvent,
+                    uuid: inUUID
+                };
+                websocket.send(JSON.stringify(json));
+                
+                // Load current settings
+                requestSettings();
+            };
+            
+            websocket.onmessage = function (evt) {
+                const jsonObj = JSON.parse(evt.data);
+                
+                if (jsonObj.event === 'didReceiveSettings') {
+                    loadSettings(jsonObj.payload.settings);
+                }
+            };
+        }
+
+        function requestSettings() {
+            if (websocket) {
+                const json = {
+                    event: 'getSettings',
+                    context: uuid
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        function saveSettings() {
+            const settings = {
+                selectedMap: document.getElementById('mapSelect').value,
+                customDuration: document.getElementById('customDuration').value || null,
+                warningTime: parseInt(document.getElementById('warningTime').value),
+                autoReset: document.getElementById('autoReset').value === 'true'
+            };
+
+            if (websocket) {
+                const json = {
+                    event: 'setSettings',
+                    context: uuid,
+                    payload: settings
+                };
+                websocket.send(JSON.stringify(json));
+            }
+
+            updateCurrentSelection();
+        }
+
+        function startRaid() {
+            const settings = {
+                selectedMap: document.getElementById('mapSelect').value,
+                customDuration: document.getElementById('customDuration').value || null,
+                warningTime: parseInt(document.getElementById('warningTime').value),
+                autoReset: document.getElementById('autoReset').value === 'true',
+                startRaid: true
+            };
+
+            if (websocket) {
+                const json = {
+                    event: 'setSettings',
+                    context: uuid,
+                    payload: settings
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        function loadSettings(settings) {
+            if (settings.selectedMap) {
+                document.getElementById('mapSelect').value = settings.selectedMap;
+            }
+            if (settings.customDuration) {
+                document.getElementById('customDuration').value = settings.customDuration;
+            }
+            if (settings.warningTime) {
+                document.getElementById('warningTime').value = settings.warningTime;
+            }
+            if (settings.autoReset !== undefined) {
+                document.getElementById('autoReset').value = settings.autoReset.toString();
+            }
+            updateCurrentSelection();
+        }
+
+        function updateCurrentSelection() {
+            const selectedMap = document.getElementById('mapSelect').value;
+            const customDuration = document.getElementById('customDuration').value;
+            const duration = customDuration || mapDurations[selectedMap];
+            const displayName = selectedMap.charAt(0).toUpperCase() + selectedMap.slice(1).replace('-', ' ');
+            
+            document.getElementById('currentMap').textContent = `${displayName} (${duration} min)`;
+        }
+
+        // Event listeners
+        document.getElementById('mapSelect').addEventListener('change', saveSettings);
+        document.getElementById('customDuration').addEventListener('input', saveSettings);
+        document.getElementById('warningTime').addEventListener('change', saveSettings);
+        document.getElementById('autoReset').addEventListener('change', saveSettings);
+        document.getElementById('startRaidBtn').addEventListener('click', startRaid);
+
+        // Initialize
+        updateCurrentSelection();
+    </script>
+</body>
+</html>

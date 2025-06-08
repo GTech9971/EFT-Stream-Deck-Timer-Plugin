@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EFT Raid Timer Settings</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #2d2d30;
+            color: #cccccc;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #555555;
+            border-radius: 4px;
+            background-color: #3c3c3c;
+            color: #ffffff;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+
+        .status-info {
+            background-color: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border-left: 3px solid #00ff00;
+        }
+
+        .status-info h4 {
+            margin: 0 0 5px 0;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .status-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .info {
+            background-color: #1a2332;
+            border-left: 3px solid #4a90e2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .info p {
+            margin: 0;
+            font-size: 12px;
+            color: #cccccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="section">
+            <div class="section-title">Timer Display Settings</div>
+            
+            <div class="input-group">
+                <label for="displayFormat">Time Display Format:</label>
+                <select id="displayFormat">
+                    <option value="mm:ss">MM:SS (default)</option>
+                    <option value="m:ss">M:SS (no leading zero)</option>
+                    <option value="minutes">Minutes only</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="warningColor">Warning Color Threshold (minutes):</label>
+                <select id="warningColor">
+                    <option value="5">Red at 5 minutes</option>
+                    <option value="10">Red at 10 minutes</option>
+                    <option value="15">Red at 15 minutes</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="yellowWarning">Yellow Warning Threshold (minutes):</label>
+                <select id="yellowWarning">
+                    <option value="10">Yellow at 10 minutes</option>
+                    <option value="15">Yellow at 15 minutes</option>
+                    <option value="20">Yellow at 20 minutes</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Behavior Settings</div>
+            
+            <div class="input-group">
+                <label for="clickAction">Click Action:</label>
+                <select id="clickAction">
+                    <option value="stop">Stop Current Raid</option>
+                    <option value="pause">Pause/Resume Timer</option>
+                    <option value="none">No Action</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="showMilliseconds">Show Seconds in Final Minute:</label>
+                <select id="showMilliseconds">
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="status-info">
+            <h4>Current Status</h4>
+            <p id="currentStatus">No active raid</p>
+            <p id="currentTime">Timer not running</p>
+        </div>
+
+        <div class="info">
+            <p><strong>Timer Controls:</strong></p>
+            <p>• Click to stop the current raid timer</p>
+            <p>• Timer automatically updates every second</p>
+            <p>• Color changes based on remaining time</p>
+            <p>• Use Map Selector to start new raids</p>
+        </div>
+    </div>
+
+    <script>
+        // Stream Deck Property Inspector API
+        let websocket = null;
+        let uuid = null;
+        let actionInfo = {};
+
+        function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
+            uuid = inUUID;
+            actionInfo = JSON.parse(inActionInfo);
+            
+            websocket = new WebSocket('ws://localhost:' + inPort);
+            
+            websocket.onopen = function () {
+                const json = {
+                    event: inRegisterEvent,
+                    uuid: inUUID
+                };
+                websocket.send(JSON.stringify(json));
+                
+                // Load current settings
+                requestSettings();
+            };
+            
+            websocket.onmessage = function (evt) {
+                const jsonObj = JSON.parse(evt.data);
+                
+                if (jsonObj.event === 'didReceiveSettings') {
+                    loadSettings(jsonObj.payload.settings);
+                }
+            };
+        }
+
+        function requestSettings() {
+            if (websocket) {
+                const json = {
+                    event: 'getSettings',
+                    context: uuid
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        function saveSettings() {
+            const settings = {
+                displayFormat: document.getElementById('displayFormat').value,
+                warningColor: parseInt(document.getElementById('warningColor').value),
+                yellowWarning: parseInt(document.getElementById('yellowWarning').value),
+                clickAction: document.getElementById('clickAction').value,
+                showMilliseconds: document.getElementById('showMilliseconds').value === 'true'
+            };
+
+            if (websocket) {
+                const json = {
+                    event: 'setSettings',
+                    context: uuid,
+                    payload: settings
+                };
+                websocket.send(JSON.stringify(json));
+            }
+        }
+
+        function loadSettings(settings) {
+            if (settings.displayFormat) {
+                document.getElementById('displayFormat').value = settings.displayFormat;
+            }
+            if (settings.warningColor) {
+                document.getElementById('warningColor').value = settings.warningColor;
+            }
+            if (settings.yellowWarning) {
+                document.getElementById('yellowWarning').value = settings.yellowWarning;
+            }
+            if (settings.clickAction) {
+                document.getElementById('clickAction').value = settings.clickAction;
+            }
+            if (settings.showMilliseconds !== undefined) {
+                document.getElementById('showMilliseconds').value = settings.showMilliseconds.toString();
+            }
+        }
+
+        // Event listeners
+        document.getElementById('displayFormat').addEventListener('change', saveSettings);
+        document.getElementById('warningColor').addEventListener('change', saveSettings);
+        document.getElementById('yellowWarning').addEventListener('change', saveSettings);
+        document.getElementById('clickAction').addEventListener('change', saveSettings);
+        document.getElementById('showMilliseconds').addEventListener('change', saveSettings);
+
+        // Update status display periodically
+        function updateStatus() {
+            // This would be updated with real raid status in a production version
+            document.getElementById('currentStatus').textContent = 'No active raid';
+            document.getElementById('currentTime').textContent = 'Timer not running';
+        }
+
+        // Initialize
+        updateStatus();
+        setInterval(updateStatus, 1000);
+    </script>
+</body>
+</html>
