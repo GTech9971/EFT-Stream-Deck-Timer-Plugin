@@ -1,0 +1,24 @@
+<svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="144" height="144" fill="#1a1a1a" rx="20"/>
+  
+  <!-- Timer Circle -->
+  <circle cx="72" cy="72" r="50" fill="none" stroke="#00ff00" stroke-width="6"/>
+  
+  <!-- Clock hands -->
+  <line x1="72" y1="72" x2="72" y2="40" stroke="#00ff00" stroke-width="4" stroke-linecap="round"/>
+  <line x1="72" y1="72" x2="95" y2="72" stroke="#00ff00" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Center dot -->
+  <circle cx="72" cy="72" r="4" fill="#00ff00"/>
+  
+  <!-- Timer indicators -->
+  <circle cx="72" cy="25" r="2" fill="#00ff00"/>
+  <circle cx="119" cy="72" r="2" fill="#00ff00"/>
+  <circle cx="72" cy="119" r="2" fill="#00ff00"/>
+  <circle cx="25" cy="72" r="2" fill="#00ff00"/>
+  
+  <!-- EFT Text -->
+  <text x="72" y="135" font-family="Arial, sans-serif" font-size="14" font-weight="bold" 
+        fill="#00ff00" text-anchor="middle">TIMER</text>
+</svg>

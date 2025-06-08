@@ -32,8 +32,14 @@ let currentRaid: RaidState = {
 // タイマー表示アクション
 @action({ UUID: "com.gtech9971.eft-stream-deck-timer-plugin.raid-timer" })
 export class RaidTimerAction extends SingletonAction {
-
+  
   private updateInterval: NodeJS.Timeout | null = null;
+  private isPaused: boolean = false;
+  private pausedTime: number = 0;
+  private keyDownTime: number = 0;
+  private longPressThreshold: number = 1000; // 1000ms長押し判定
+  private longPressTimer: NodeJS.Timeout | null = null;
+  private isLongPress: boolean = false;
 
   override async onWillAppear(ev: WillAppearEvent) {
     await this.updateDisplay(ev.action);
@@ -45,11 +51,56 @@ export class RaidTimerAction extends SingletonAction {
   }
 
   override async onKeyDown(ev: KeyDownEvent) {
-    // キーを押したときの動作（レイド終了）
-    if (currentRaid.isActive) {
+    if (!currentRaid.isActive) return;
+    
+    this.keyDownTime = Date.now();
+    this.isLongPress = false;
+    
+    // 長押し判定用タイマー開始
+    this.longPressTimer = setTimeout(async () => {
+      this.isLongPress = true;
+      // 長押し時の視覚フィードバック
+      await ev.action.setTitle("Clearing...");
+    }, this.longPressThreshold);
+  }
+
+  override async onKeyUp(ev: KeyUpEvent) {
+    if (!currentRaid.isActive) return;
+    
+    // タイマーをクリア
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+
+    const pressDuration = Date.now() - this.keyDownTime;
+    
+    if (this.isLongPress || pressDuration >= this.longPressThreshold) {
+      // 長押し: タイマークリア
       this.endRaid();
       await ev.action.setTitle("No Raid");
       await ev.action.setImage(this.createTimerSVG("--:--", "#666666"));
+    } else {
+      // 短押し: 一時停止/再開
+      await this.togglePause(ev.action);
+    }
+    
+    this.isLongPress = false;
+  }
+
+  async togglePause(action: any) {
+    if (!currentRaid.isActive || !currentRaid.startTime) return;
+    
+    this.isPaused = !this.isPaused;
+    
+    if (this.isPaused) {
+      // 一時停止: 現在の経過時間を保存
+      this.pausedTime = Date.now() - currentRaid.startTime;
+      await action.setTitle("PAUSED");
+    } else {
+      // 再開: 開始時刻を調整
+      currentRaid.startTime = Date.now() - this.pausedTime;
+      await this.updateDisplay(action);
     }
   }
 
@@ -74,6 +125,11 @@ export class RaidTimerAction extends SingletonAction {
       return;
     }
 
+    // 一時停止中は表示を更新しない
+    if (this.isPaused) {
+      return;
+    }
+
     const now = Date.now();
     const elapsed = Math.floor((now - currentRaid.startTime) / 1000);
     const remaining = Math.max(0, currentRaid.duration * 60 - elapsed);
@@ -95,16 +151,28 @@ export class RaidTimerAction extends SingletonAction {
     else if (remaining < 600) color = "#ffff00"; // 黄（10分以下）
 
     await action.setTitle(timeString);
-    await action.setImage(this.createTimerSVG(timeString, color));
+    await action.setImage(this.createTimerSVG(timeString, color, this.isPaused));
   }
 
-  createTimerSVG(timeString: string, color: string): string {
+  createTimerSVG(timeString: string, color: string, isPaused: boolean = false): string {
+    const bgColor = isPaused ? "#2d2d00" : "#1a1a1a";
+    const pauseIcon = isPaused ? `
+      <rect x="58" y="58" width="8" height="28" fill="${color}" rx="2"/>
+      <rect x="78" y="58" width="8" height="28" fill="${color}" rx="2"/>
+    ` : '';
+    
     const svg = `
       <svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
-        <rect width="144" height="144" fill="#1a1a1a" rx="10"/>
-        <circle cx="72" cy="72" r="60" fill="none" stroke="${color}" stroke-width="4"/>
-        <text x="72" y="82" font-family="Arial, sans-serif" font-size="24" font-weight="bold" 
+        <rect width="144" height="144" fill="${bgColor}" rx="10"/>
+        <circle cx="72" cy="72" r="60" fill="none" stroke="${color}" stroke-width="4" 
+                stroke-dasharray="${isPaused ? '5,5' : 'none'}"/>
+        <text x="72" y="${isPaused ? '100' : '82'}" font-family="Arial, sans-serif" font-size="24" font-weight="bold" 
               fill="${color}" text-anchor="middle">${timeString}</text>
+        ${pauseIcon}
+        ${isPaused ? `<text x="72" y="120" font-family="Arial, sans-serif" font-size="10" 
+              fill="#888888" text-anchor="middle">Click: resume | Hold: clear</text>` : 
+              `<text x="72" y="120" font-family="Arial, sans-serif" font-size="10" 
+              fill="#888888" text-anchor="middle">Click: pause | Hold: clear</text>`}
       </svg>
     `;
     return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
@@ -115,13 +183,15 @@ export class RaidTimerAction extends SingletonAction {
     currentRaid.map = null;
     currentRaid.startTime = null;
     currentRaid.duration = 0;
+    this.isPaused = false;
+    this.pausedTime = 0;
   }
 }
 
 // マップ選択アクション（長押し対応版）
 @action({ UUID: "com.gtech9971.eft-stream-deck-timer-plugin.map-selector" })
 export class MapSelectorAction extends SingletonAction {
-
+  
   private currentMapIndex: number = 0;
   private maps: string[] = Object.keys(MAP_DURATIONS);
   private keyDownTime: number = 0;
@@ -140,7 +210,7 @@ export class MapSelectorAction extends SingletonAction {
   override async onKeyDown(ev: KeyDownEvent) {
     this.keyDownTime = Date.now();
     this.isLongPress = false;
-
+    
     // 長押し判定用タイマー開始
     this.longPressTimer = setTimeout(async () => {
       this.isLongPress = true;
@@ -150,7 +220,7 @@ export class MapSelectorAction extends SingletonAction {
     }, this.longPressThreshold);
   }
 
-  override  async onKeyUp(ev: KeyUpEvent) {
+  override async onKeyUp(ev: KeyUpEvent) {
     // タイマーをクリア
     if (this.longPressTimer) {
       clearTimeout(this.longPressTimer);
@@ -158,18 +228,18 @@ export class MapSelectorAction extends SingletonAction {
     }
 
     const pressDuration = Date.now() - this.keyDownTime;
-
+    
     // 短押しの場合のみマップ切り替え
     if (!this.isLongPress && pressDuration < this.longPressThreshold) {
       this.currentMapIndex = (this.currentMapIndex + 1) % this.maps.length;
       await ev.action.setSettings({ selectedMap: this.maps[this.currentMapIndex] });
       await this.updateDisplay(ev.action);
     }
-
+    
     this.isLongPress = false;
   }
 
-  override  async onDidReceiveSettings(ev: DidReceiveSettingsEvent) {
+  override async onDidReceiveSettings(ev: DidReceiveSettingsEvent) {
     const settings = ev.payload.settings;
     if (settings.selectedMap) {
       this.currentMapIndex = this.maps.indexOf(settings.selectedMap as string);
@@ -185,7 +255,7 @@ export class MapSelectorAction extends SingletonAction {
   async updateDisplay(action: any) {
     const currentMap = this.maps[this.currentMapIndex];
     const duration = MAP_DURATIONS[currentMap];
-
+    
     const displayName = currentMap.charAt(0).toUpperCase() + currentMap.slice(1).replace('-', ' ');
     await action.setTitle(`${displayName}\n${duration}min`);
     await action.setImage(this.createMapSVG(displayName, duration));
@@ -194,7 +264,7 @@ export class MapSelectorAction extends SingletonAction {
   async startRaid(action: any) {
     const selectedMap = this.maps[this.currentMapIndex];
     const duration = MAP_DURATIONS[selectedMap];
-
+    
     currentRaid = {
       map: selectedMap,
       startTime: Date.now(),
@@ -205,7 +275,7 @@ export class MapSelectorAction extends SingletonAction {
     const displayName = selectedMap.charAt(0).toUpperCase() + selectedMap.slice(1).replace('-', ' ');
     await action.setTitle(`Raid Started!\n${displayName}`);
     await action.setImage(this.createMapSVG(displayName, duration, true));
-
+    
     // 3秒後に通常表示に戻す
     setTimeout(async () => {
       await this.updateDisplay(action);
@@ -216,7 +286,7 @@ export class MapSelectorAction extends SingletonAction {
     const bgColor = isStarted ? "#1a3d1a" : "#2a2a2a";
     const borderColor = isStarted ? "#00ff00" : "#4a90e2";
     const textColor = isStarted ? "#00ff00" : "#ffffff";
-
+    
     const svg = `
       <svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
         <rect width="144" height="144" fill="${bgColor}" rx="10"/>

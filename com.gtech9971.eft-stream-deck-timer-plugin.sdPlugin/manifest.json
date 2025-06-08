@@ -36,7 +36,7 @@
 			]
 		}
 	],
-	"Category": "Gaming",
+	"Category": "EFT Raid Timer",
 	"CategoryIcon": "imgs/plugin/category-icon",
 	"CodePath": "bin/plugin.js",
 	"Description": "Escape from Tarkov raid timer plugin for Stream Deck. Track remaining raid time for all maps.",

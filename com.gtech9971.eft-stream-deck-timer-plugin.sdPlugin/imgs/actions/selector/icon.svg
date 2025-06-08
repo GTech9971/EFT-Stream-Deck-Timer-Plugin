@@ -1,0 +1,22 @@
+<svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="144" height="144" fill="#2a2a2a" rx="20"/>
+  
+  <!-- Map outline -->
+  <rect x="20" y="30" width="104" height="84" fill="none" stroke="#4a90e2" stroke-width="3" rx="8"/>
+  
+  <!-- Map elements -->
+  <rect x="30" y="40" width="20" height="15" fill="#4a90e2" rx="2"/>
+  <rect x="60" y="50" width="15" height="20" fill="#4a90e2" rx="2"/>
+  <rect x="85" y="45" width="25" height="12" fill="#4a90e2" rx="2"/>
+  <rect x="40" y="75" width="30" height="8" fill="#4a90e2" rx="1"/>
+  <rect x="80" y="85" width="20" height="15" fill="#4a90e2" rx="2"/>
+  
+  <!-- Location marker -->
+  <circle cx="65" cy="65" r="4" fill="#ff4444"/>
+  <circle cx="65" cy="65" r="2" fill="#ffffff"/>
+  
+  <!-- Title -->
+  <text x="72" y="130" font-family="Arial, sans-serif" font-size="12" font-weight="bold" 
+        fill="#4a90e2" text-anchor="middle">MAP</text>
+</svg>
